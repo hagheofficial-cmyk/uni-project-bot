@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>پنل مدیریت</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root {
+  --bg: #0a0a0a;
+  --surface: #111;
+  --surface2: #161616;
+  --border: #1e1e1e;
+  --text: #f5f5f5;
+  --text2: #a0a0a0;
+  --text3: #666;
+  --accent: #fff;
+  --green: #22c55e;
+  --red: #ef4444;
+  --blue: #3b82f6;
+  --amber: #f59e0b;
+  --r: 16px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  background:var(--bg);color:var(--text);direction:rtl;
+  min-height:100vh;overflow-x:hidden;
+  padding-bottom:calc(80px + env(safe-area-inset-bottom,16px));
+  line-height:1.5;
+}
+.header{
+  position:sticky;top:0;z-index:100;
+  background:rgba(10,10,10,.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  padding:16px 20px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);
+}
+.header h1{font-size:18px;font-weight:600;letter-spacing:-.3px}
+.page{display:none;padding:16px 16px 24px;animation:fadeIn .2s ease}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.card{background:var(--surface);border-radius:var(--r);padding:20px;border:1px solid var(--border);margin-bottom:12px}
+.card-header{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.card-header .ic{width:32px;height:32px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:16px}
+.card-header h3{font-size:14px;font-weight:600}
+
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;text-align:center;cursor:pointer;transition:border-color .15s}
+.stat:active{border-color:var(--text3)}
+.stat .num{font-size:28px;font-weight:700;letter-spacing:-1px;line-height:1}
+.stat .lbl{font-size:11px;color:var(--text3);margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+.stat.warn .num{color:var(--amber)}
+.stat.info .num{color:var(--blue)}
+.stat.ok .num{color:var(--green)}
+.stat.rev .num{color:var(--red)}
+
+.btn{
+  display:block;width:100%;padding:14px;border-radius:12px;font-size:14px;font-weight:600;
+  text-align:center;cursor:pointer;border:none;font-family:inherit;
+  transition:opacity .15s,transform .15s;
+}
+.btn:active{transform:scale(.98);opacity:.9}
+.btn-primary{background:var(--accent);color:#000}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-danger{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.15)}
+.btn-success{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.15)}
+.btn-sm{padding:8px 14px;font-size:12px;border-radius:8px;width:auto;display:inline-block}
+.btn-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.btn-row .btn{flex:1;min-width:80px}
+
+.input{
+  width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;outline:none;
+  transition:border-color .2s;
+}
+.input:focus{border-color:var(--accent)}
+.textarea{resize:vertical;min-height:80px;line-height:1.6}
+.label{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;display:block;text-transform:uppercase;letter-spacing:.5px}
+.form-group{margin-bottom:14px}
+
+.filters{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:0 0 16px}
+.filters::-webkit-scrollbar{display:none}
+.filter{
+  padding:8px 14px;border-radius:100px;font-size:12px;font-weight:500;
+  white-space:nowrap;cursor:pointer;border:1px solid var(--border);
+  background:transparent;color:var(--text2);font-family:inherit;transition:all .15s;flex-shrink:0;
+}
+.filter.active{background:var(--accent);color:#000;border-color:var(--accent)}
+
+.order{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:16px;margin-bottom:8px;cursor:pointer;transition:border-color .15s;
+}
+.order:active{border-color:var(--text3)}
+.order .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.order .oid{font-weight:600;font-size:14px}
+.status{
+  font-size:10px;padding:3px 8px;border-radius:100px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;
+}
+.s-pending{background:rgba(245,158,11,.1);color:var(--amber)}
+.s-paid_advance,.s-in_progress{background:rgba(59,130,246,.1);color:var(--blue)}
+.s-completed{background:rgba(34,197,94,.1);color:var(--green)}
+.s-paid_final{background:rgba(34,197,94,.15);color:var(--green)}
+.s-cancelled{background:rgba(239,68,68,.1);color:var(--red)}
+.order .cat{font-size:12px;color:var(--text3);margin-bottom:4px}
+.order .meta{display:flex;gap:12px;font-size:11px;color:var(--text3);flex-wrap:wrap}
+.order .price{font-weight:600;color:var(--text)}
+
+.detail-block{margin-bottom:20px}
+.detail-block h3{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.detail-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px}
+.detail-row .key{color:var(--text3)}
+.detail-row .val{color:var(--text);font-weight:500;text-align:left}
+
+.file-item{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface2);border-radius:10px;margin-bottom:4px;font-size:12px}
+.file-item a{color:var(--blue);text-decoration:none;font-size:11px}
+
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;
+  background:rgba(10,10,10,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  display:flex;justify-content:space-around;padding:8px 0 env(safe-area-inset-bottom,8px);
+  border-top:1px solid var(--border);z-index:100;
+}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:4px 12px;cursor:pointer;color:var(--text3);font-size:10px;
+  font-weight:500;border:none;background:none;font-family:inherit;transition:color .15s;
+}
+.nav-item.active{color:var(--text)}
+.nav-item svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.5}
+
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:flex-end;justify-content:center}
+.modal-overlay.active{display:flex}
+.modal{
+  background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:500px;
+  max-height:85vh;overflow-y:auto;padding:8px 0;animation:slideUp .3s ease;
+  border:1px solid var(--border);border-bottom:none;
+}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:100px;margin:8px auto 16px}
+.modal-body{padding:0 20px 24px}
+.modal-title{font-size:17px;font-weight:600;margin-bottom:16px;text-align:center}
+
+.empty{text-align:center;padding:40px 20px}
+.empty .icon{font-size:40px;margin-bottom:12px;opacity:.3}
+.empty p{font-size:14px;color:var(--text3)}
+
+.toast{
+  position:fixed;top:20px;left:50%;transform:translateX(-50%);
+  background:var(--surface);color:var(--text);padding:12px 24px;
+  border-radius:12px;font-size:13px;font-weight:500;z-index:2000;
+  border:1px solid var(--border);animation:toastIn .3s ease,toastOut .3s ease 1.8s forwards;
+}
+.toast.error{border-color:rgba(239,68,68,.3);color:var(--red)}
+.toast.success{border-color:rgba(34,197,94,.3);color:var(--green)}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@keyframes toastOut{from{opacity:1}to{opacity:0;transform:translateX(-50%) translateY(-12px)}}
+
+.toggle{
+  width:48px;height:28px;border-radius:14px;background:var(--border);
+  position:relative;cursor:pointer;transition:background .2s;display:inline-block;vertical-align:middle;
+}
+.toggle.on{background:var(--green)}
+.toggle::after{
+  content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;
+  background:#fff;transition:transform .2s;
+}
+.toggle.on::after{transform:translateX(20px)}
+
+pre.code{
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  padding:10px;font-size:12px;overflow-x:auto;white-space:pre-wrap;color:var(--text2);
+  font-family:'SF Mono',monospace;
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <h1 id="pageTitle">داشبورد</h1>
+  <span style="font-size:12px;color:var(--text3)" id="clock"></span>
+</header>
+
+<!-- DASHBOARD -->
+<div class="page active" id="page-dashboard">
+  <div class="stats" id="dashStats"></div>
+  <div class="card">
+    <div class="card-header"><div class="ic">◉</div><h3>آخرین سفارشات</h3></div>
+    <div id="recentOrders"></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="ic">◎</div><h3>پرداخت‌های در انتظار تأیید</h3></div>
+    <div id="pendingPayments"></div>
+  </div>
+</div>
+
+<!-- ORDERS -->
+<div class="page" id="page-orders">
+  <div class="filters" id="orderFilters"></div>
+  <div id="ordersList"></div>
+</div>
+
+<!-- ORDER DETAIL -->
+<div class="page" id="page-order-detail">
+  <button class="btn btn-secondary btn-sm" onclick="navTo('orders')" style="margin-bottom:16px">← بازگشت</button>
+  <div id="orderDetail"></div>
+</div>
+
+<!-- PAYMENTS -->
+<div class="page" id="page-payments">
+  <div class="filters" id="paymentFilters"></div>
+  <div id="paymentsList"></div>
+</div>
+
+<!-- CATEGORIES -->
+<div class="page" id="page-categories">
+  <button class="btn btn-primary" onclick="openCatModal()" style="margin-bottom:16px">＋ افزودن دسته‌بندی</button>
+  <div id="catList"></div>
+</div>
+
+<!-- NOTIFICATIONS -->
+<div class="page" id="page-notifications">
+  <div class="card">
+    <div class="card-header"><div class="ic">◈</div><h3>اعلان‌های وضعیت سفارش</h3></div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:16px">برای هر وضعیت پیام دلخواه تنظیم کنید. متغیرها: <code>{user}</code> <code>{oid}</code> <code>{amount}</code></p>
+    <div id="notifList"></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="page" id="page-settings">
+  <div id="settingsForm"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-item active" data-page="dashboard" onclick="navTo('dashboard')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    <span>داشبورد</span>
+  </button>
+  <button class="nav-item" data-page="orders" onclick="navTo('orders')">
+    <svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/></svg>
+    <span>سفارشات</span>
+  </button>
+  <button class="nav-item" data-page="payments" onclick="navTo('payments')">
+    <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><line x1="16" y1="12" x2="20" y2="12"/></svg>
+    <span>پرداخت‌ها</span>
+  </button>
+  <button class="nav-item" data-page="categories" onclick="navTo('categories')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="8" rx="2"/><rect x="3" y="14" width="8" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>
+    <span>دسته‌بندی</span>
+  </button>
+  <button class="nav-item" data-page="notifications" onclick="navTo('notifications')">
+    <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <span>اعلان‌ها</span>
+  </button>
+  <button class="nav-item" data-page="settings" onclick="navTo('settings')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    <span>تنظیمات</span>
+  </button>
+</nav>
+
+<!-- CATEGORY MODAL -->
+<div class="modal-overlay" id="catModal" onclick="if(event.target===this)closeCatModal()">
+  <div class="modal"><div class="modal-handle"></div>
+    <div class="modal-body">
+      <div class="modal-title" id="catModalTitle">افزودن دسته‌بندی</div>
+      <input type="hidden" id="catEditId">
+      <div class="form-group"><label class="label">نام</label><input class="input" id="catName"></div>
+      <div class="form-group"><label class="label">توضیحات</label><textarea class="input textarea" id="catDesc"></textarea></div>
+      <div class="form-group"><label class="label">قیمت (تومان)</label><input class="input" type="number" id="catPrice"></div>
+      <div class="form-group"><label class="label">درصد پیش‌پرداخت</label><input class="input" type="number" id="catAdvance" placeholder="پیش‌فرض از تنظیمات"></div>
+      <button class="btn btn-primary" onclick="saveCat()">ذخیره</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toastContainer"></div>
+
+<script>
+const TG = window.Telegram.WebApp; TG.ready(); TG.expand();
+const initData = TG.initData || '';
+const API = (path, method='GET', body=null) => {
+  const opts = {method, headers:{'Content-Type':'application/json','X-Telegram-Init-Data':initData}};
+  if (body) opts.body = JSON.stringify(body);
+  return fetch(path, opts).then(r => r.ok ? r.json() : r.json().then(e => {throw new Error(e.error||'خطا')}));
+};
+
+let currentPage = 'dashboard';
+let currentFilter = 'all';
+let currentPaymentFilter = 'all';
+let categories = [];
+let orders = [];
+let payments = [];
+let notifications = {};
+let settings = {};
+
+const statusLabels = {pending:'در انتظار',paid_advance:'پیش‌پرداخت',in_progress:'در حال انجام',completed:'تکمیل',paid_final:'تسویه',cancelled:'لغو'};
+const statusClasses = {pending:'s-pending',paid_advance:'s-paid_advance',in_progress:'s-in_progress',completed:'s-completed',paid_final:'s-paid_final',cancelled:'s-cancelled'};
+
+function navTo(page) {
+  currentPage = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const pg = document.getElementById('page-'+page);
+  if (pg) pg.classList.add('active');
+  const nav = document.querySelector(`.nav-item[data-page="${page}"]`);
+  if (nav) nav.classList.add('active');
+  const titles = {dashboard:'داشبورد',orders:'سفارشات',payments:'پرداخت‌ها',categories:'دسته‌بندی‌ها',notifications:'اعلان‌ها',settings:'تنظیمات'};
+  document.getElementById('pageTitle').textContent = titles[page] || '';
+  if (page === 'dashboard') loadDashboard();
+  if (page === 'orders') loadOrders();
+  if (page === 'payments') loadPayments();
+  if (page === 'categories') loadCategories();
+  if (page === 'notifications') loadNotifications();
+  if (page === 'settings') loadSettings();
+  document.querySelectorAll('.page').forEach(p => { if (p.id !== 'page-'+page && p.id !== 'page-order-detail') p.classList.remove('active'); });
+}
+
+function toast(msg, type='') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div'); t.className = 'toast '+type; t.textContent = msg; c.appendChild(t);
+  setTimeout(() => t.remove(), 2200);
+}
+
+// ── DASHBOARD ──
+async function loadDashboard() {
+  try {
+    const d = await API('/api/admin/dashboard');
+    document.getElementById('dashStats').innerHTML = `
+      <div class="stat warn" onclick="navTo('orders');setTimeout(()=>filterOrders('pending'),200)"><div class="num">${d.pending}</div><div class="lbl">در انتظار</div></div>
+      <div class="stat info" onclick="navTo('orders');setTimeout(()=>filterOrders('paid_advance'),200)"><div class="num">${d.in_progress}</div><div class="lbl">در حال انجام</div></div>
+      <div class="stat ok" onclick="navTo('orders');setTimeout(()=>filterOrders('completed'),200)"><div class="num">${d.completed}</div><div class="lbl">تکمیل شده</div></div>
+      <div class="stat"><div class="num">${(d.total_earned||0).toLocaleString('fa-IR')}</div><div class="lbl">درآمد (تومان)</div></div>`;
+    await loadOrders();
+    document.getElementById('recentOrders').innerHTML = orders.slice(0,5).map(o => renderOrderCard(o)).join('') || '<div class="empty"><p>سفارشی نیست</p></div>';
+    attachOrderClicks();
+    await loadPayments();
+    const pendingPays = payments.filter(p => p.status === 'pending');
+    document.getElementById('pendingPayments').innerHTML = pendingPays.length ? pendingPays.map(p => renderPaymentCard(p)).join('') : '<div style="font-size:13px;color:var(--text3)">پرداخت در انتظاری نیست</div>';
+    attachPaymentClicks();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ── ORDERS ──
+async function loadOrders() {
+  try {
+    orders = await API('/api/admin/orders');
+    document.getElementById('orderFilters').innerHTML = `
+      <button class="filter active" onclick="filterOrders('all',this)">همه</button>
+      <button class="filter" onclick="filterOrders('pending',this)">در انتظار</button>
+      <button class="filter" onclick="filterOrders('paid_advance',this)">پیش‌پرداخت</button>
+      <button class="filter" onclick="filterOrders('in_progress',this)">در حال انجام</button>
+      <button class="filter" onclick="filterOrders('completed',this)">تکمیل</button>
+      <button class="filter" onclick="filterOrders('cancelled',this)">لغو</button>`;
+    renderOrders();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function filterOrders(s, btn) {
+  currentFilter = s;
+  document.querySelectorAll('#orderFilters .filter').forEach(f => f.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderOrders();
+}
+
+function renderOrders() {
+  const filtered = currentFilter === 'all' ? orders : orders.filter(o => o.status === currentFilter);
+  const c = document.getElementById('ordersList');
+  c.innerHTML = filtered.length ? filtered.map(o => renderOrderCard(o)).join('') : '<div class="empty"><div class="icon">○</div><p>سفارشی نیست</p></div>';
+  attachOrderClicks();
+}
+
+function renderOrderCard(o) {
+  const fs = o.files||[]; const ps = o.payments||[];
+  return `<div class="order" data-oid="${o.id}">
+    <div class="top"><span class="oid">#${o.id}</span><span class="status ${statusClasses[o.status]||''}">${statusLabels[o.status]||o.status}</span></div>
+    <div class="cat">${esc(o.category_name)}</div>
+    <div class="meta"><span>${esc(o.first_name||'')} ${o.username?'@'+o.username:''}</span><span>${o.price.toLocaleString('fa-IR')} تومان</span><span>${fs.length} فایل</span><span>${ps.length} پرداخت</span></div>
+    <div class="meta"><span>${new Date(o.created_at).toLocaleDateString('fa-IR')}</span></div>
+  </div>`;
+}
+
+function attachOrderClicks() {
+  document.querySelectorAll('.order').forEach(el => el.addEventListener('click', () => openOrder(el.dataset.oid)));
+}
+
+async function openOrder(oid) {
+  try {
+    const o = await API('/api/admin/orders/'+oid);
+    const fs = o.files||[]; const ps = o.payments||[];
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-order-detail').classList.add('active');
+    document.getElementById('pageTitle').textContent = 'سفارش #'+oid;
+
+    let h = `<div class="detail-block"><h3>اطلاعات</h3>
+      <div class="detail-row"><span class="key">وضعیت</span><span class="val"><span class="status ${statusClasses[o.status]||''}">${statusLabels[o.status]||o.status}</span></span></div>
+      <div class="detail-row"><span class="key">دسته‌بندی</span><span class="val">${esc(o.category_name)}</span></div>
+      <div class="detail-row"><span class="key">قیمت</span><span class="val">${o.price.toLocaleString('fa-IR')} تومان</span></div>
+      <div class="detail-row"><span class="key">پیش‌پرداخت</span><span class="val">${o.advance_amount.toLocaleString('fa-IR')} تومان</span></div>
+      <div class="detail-row"><span class="key">نهایی</span><span class="val">${o.final_amount.toLocaleString('fa-IR')} تومان</span></div>
+      <div class="detail-row"><span class="key">مشتری</span><span class="val">${esc(o.first_name||'')} ${o.username?'@'+o.username:''} (ID: ${o.user_id})</span></div>
+      <div class="detail-row"><span class="key">تاریخ</span><span class="val">${new Date(o.created_at).toLocaleDateString('fa-IR')}</span></div>
+    </div>`;
+
+    if (o.description) h += `<div class="detail-block"><h3>توضیحات</h3><div style="font-size:13px;line-height:1.7;white-space:pre-wrap">${esc(o.description)}</div></div>`;
+
+    if (fs.length) h += `<div class="detail-block"><h3>فایل‌ها (${fs.length})</h3>${fs.map(f => `<div class="file-item"><span>◈</span><span>${esc(f.filename)}</span><a href="/api/admin/files/${f.id}?initData=${encodeURIComponent(initData)}" target="_blank">دانلود</a></div>`).join('')}</div>`;
+
+    if (ps.length) h += `<div class="detail-block"><h3>پرداخت‌ها</h3>${ps.map(p => {
+      const st = p.status==='paid'?'پرداخت شده':p.status==='failed'?'ناموفق':'در انتظار';
+      const sc = p.status==='paid'?'color:var(--green)':p.status==='failed'?'color:var(--red)':'color:var(--amber)';
+      let actions = '';
+      if (p.status==='pending') actions = `<div class="btn-row" style="margin-top:8px"><button class="btn btn-success btn-sm" onclick="approvePayment('${p.id}')">✓ تأیید</button><button class="btn btn-danger btn-sm" onclick="rejectPayment('${p.id}')">✕ رد</button></div>`;
+      return `<div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:8px">
+        <div class="detail-row"><span class="key">${p.payment_type==='advance'?'پیش‌پرداخت':'نهایی'}</span><span class="val" style="${sc}">${p.amount.toLocaleString('fa-IR')} — ${st}</span></div>
+        ${p.ref_id?`<div class="detail-row"><span class="key">کد پیگیری</span><span class="val">${p.ref_id}</span></div>`:''}
+        ${actions}</div>`;
+    }).join('')}</div>`;
+
+    // Status change buttons
+    const flows = {pending:['paid_advance','cancelled'],paid_advance:['in_progress','cancelled'],in_progress:['completed','cancelled'],completed:['paid_final','cancelled'],cancelled:['pending']};
+    const next = flows[o.status]||[];
+    if (next.length) {
+      const labels = {paid_advance:'تأیید پیش‌پرداخت',in_progress:'شروع انجام',completed:'تکمیل پروژه',paid_final:'تسویه نهایی',cancelled:'لغو',pending:'بازگشت به انتظار'};
+      h += `<div class="detail-block"><h3>تغییر وضعیت</h3><div class="btn-row">${next.map(s => {
+        const cls = s === 'cancelled' ? 'btn-danger' : 'btn-secondary';
+        return `<button class="btn ${cls} btn-sm" onclick="changeStatus('${oid}','${s}')">${labels[s]||s}</button>`;
+      }).join('')}</div></div>`;
+    }
+
+    document.getElementById('orderDetail').innerHTML = h;
+    window.scrollTo(0,0);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function changeStatus(oid, ns) {
+  if (!confirm(`تغییر وضعیت به «${statusLabels[ns]||ns}»؟`)) return;
+  try {
+    await API('/api/admin/orders/'+oid+'/status','PUT',{status:ns});
+    toast('وضعیت تغییر کرد','success');
+    openOrder(oid);
+    loadDashboard();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ── PAYMENTS ──
+async function loadPayments() {
+  try {
+    payments = await API('/api/admin/payments');
+    document.getElementById('paymentFilters').innerHTML = `
+      <button class="filter active" onclick="filterPayments('all',this)">همه</button>
+      <button class="filter" onclick="filterPayments('pending',this)">در انتظار</button>
+      <button class="filter" onclick="filterPayments('paid',this)">پرداخت شده</button>
+      <button class="filter" onclick="filterPayments('failed',this)">ناموفق</button>`;
+    renderPayments();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function filterPayments(s, btn) {
+  currentPaymentFilter = s;
+  document.querySelectorAll('#paymentFilters .filter').forEach(f => f.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderPayments();
+}
+
+function renderPayments() {
+  const filtered = currentPaymentFilter === 'all' ? payments : payments.filter(p => p.status === currentPaymentFilter);
+  const c = document.getElementById('paymentsList');
+  c.innerHTML = filtered.length ? filtered.map(p => renderPaymentCard(p)).join('') : '<div class="empty"><p>پرداختی نیست</p></div>';
+  attachPaymentClicks();
+}
+
+function renderPaymentCard(p) {
+  const o = orders.find(x => x.id === p.order_id) || {};
+  const st = p.status==='paid'?'پرداخت شده':p.status==='failed'?'ناموفق':'در انتظار';
+  const sc = p.status==='paid'?';color:var(--green)':p.status==='failed'?';color:var(--red)':'';
+  let actions = '';
+  if (p.status === 'pending') actions = `<div class="btn-row" style="margin-top:8px"><button class="btn btn-success btn-sm" onclick="event.stopPropagation();approvePayment('${p.id}')">✓ تأیید</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();rejectPayment('${p.id}')">✕ رد</button></div>`;
+  return `<div class="card" style="cursor:default">
+    <div class="detail-row"><span class="key">سفارش</span><span class="val">#${p.order_id} — ${esc(o.category_name||'')}</span></div>
+    <div class="detail-row"><span class="key">نوع</span><span class="val">${p.payment_type==='advance'?'پیش‌پرداخت':'پرداخت نهایی'}</span></div>
+    <div class="detail-row"><span class="key">مبلغ</span><span class="val">${p.amount.toLocaleString('fa-IR')} تومان</span></div>
+    <div class="detail-row"><span class="key">وضعیت</span><span class="val" style="${sc}">${st}</span></div>
+    ${p.ref_id?`<div class="detail-row"><span class="key">کد پیگیری</span><span class="val">${p.ref_id}</span></div>`:''}
+    <div class="detail-row"><span class="key">تاریخ</span><span class="val">${new Date(p.created_at).toLocaleDateString('fa-IR')}</span></div>
+    ${actions}</div>`;
+}
+
+function attachPaymentClicks() {}
+
+async function approvePayment(pid) {
+  try { await API('/api/admin/payments/'+pid+'/approve','PUT'); toast('پرداخت تأیید شد','success'); loadDashboard(); loadPayments(); } catch(e) { toast(e.message,'error'); }
+}
+async function rejectPayment(pid) {
+  try { await API('/api/admin/payments/'+pid+'/reject','PUT'); toast('پرداخت رد شد','error'); loadDashboard(); loadPayments(); } catch(e) { toast(e.message,'error'); }
+}
+
+// ── CATEGORIES ──
+async function loadCategories() {
+  try {
+    const cats = await API('/api/admin/categories');
+    categories = cats;
+    const active = cats.filter(c => c.active !== false);
+    const inactive = cats.filter(c => c.active === false);
+    let h = active.map(c => `<div class="card">
+      <div class="detail-row"><span class="key">نام</span><span class="val">${esc(c.name)}</span></div>
+      <div class="detail-row"><span class="key">قیمت</span><span class="val">${c.price.toLocaleString('fa-IR')} تومان</span></div>
+      <div class="detail-row"><span class="key">پیش‌پرداخت</span><span class="val">${c.advance_percent}٪</span></div>
+      ${c.description?`<div class="detail-row"><span class="key">توضیحات</span><span class="val">${esc(c.description)}</span></div>`:''}
+      <div class="btn-row"><button class="btn btn-secondary btn-sm" onclick="editCat('${c.id}')">ویرایش</button><button class="btn btn-danger btn-sm" onclick="deleteCat('${c.id}')">غیرفعال</button></div>
+    </div>`).join('');
+    if (inactive.length) h += `<div style="margin-top:16px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">غیرفعال</div>` + inactive.map(c => `<div class="card" style="opacity:.5"><div class="detail-row"><span class="key">${esc(c.name)}</span><span class="val">${c.price.toLocaleString('fa-IR')} تومان</span></div></div>`).join('');
+    if (!cats.length) h = '<div class="empty"><p>دسته‌بندی تعریف نشده</p></div>';
+    document.getElementById('catList').innerHTML = h;
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function openCatModal(cid) {
+  document.getElementById('catModal').classList.add('active');
+  if (cid) {
+    document.getElementById('catModalTitle').textContent = 'ویرایش دسته‌بندی';
+    document.getElementById('catEditId').value = cid;
+    const c = categories.find(x => x.id === cid);
+    if (c) { document.getElementById('catName').value = c.name||''; document.getElementById('catDesc').value = c.description||''; document.getElementById('catPrice').value = c.price||''; document.getElementById('catAdvance').value = c.advance_percent||''; }
+  } else {
+    document.getElementById('catModalTitle').textContent = 'افزودن دسته‌بندی';
+    document.getElementById('catEditId').value = '';
+    ['catName','catDesc','catPrice','catAdvance'].forEach(id => document.getElementById(id).value = '');
+  }
+}
+
+function closeCatModal() { document.getElementById('catModal').classList.remove('active'); }
+
+async function saveCat() {
+  const eid = document.getElementById('catEditId').value;
+  const data = { name: document.getElementById('catName').value.trim(), description: document.getElementById('catDesc').value.trim(), price: parseInt(document.getElementById('catPrice').value)||0, advance_percent: parseInt(document.getElementById('catAdvance').value)||null };
+  if (!data.name || !data.price) { toast('نام و قیمت الزامی است','error'); return; }
+  try {
+    if (eid) await API('/api/admin/categories/'+eid,'PUT',data);
+    else await API('/api/admin/categories','POST',data);
+    toast('ذخیره شد','success'); closeCatModal(); loadCategories();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function editCat(cid) { openCatModal(cid); }
+
+async function deleteCat(cid) {
+  if (!confirm('غیرفعال کردن این دسته‌بندی؟')) return;
+  try { await API('/api/admin/categories/'+cid,'DELETE'); toast('غیرفعال شد','success'); loadCategories(); } catch(e) { toast(e.message,'error'); }
+}
+
+// ── NOTIFICATIONS ──
+async function loadNotifications() {
+  try {
+    notifications = await API('/api/admin/notifications');
+    const statuses = ['pending','paid_advance','in_progress','completed','paid_final','cancelled'];
+    document.getElementById('notifList').innerHTML = statuses.map(s => {
+      const n = notifications[s] || {to_user:'',to_admin:''};
+      return `<div class="card">
+        <div style="font-weight:600;font-size:14px;margin-bottom:12px">${statusLabels[s]||s}</div>
+        <div class="form-group"><label class="label">پیام به مشتری</label><textarea class="input textarea notif-input" data-status="${s}" data-type="to_user">${esc(n.to_user||'')}</textarea></div>
+        <div class="form-group"><label class="label">پیام به ادمین</label><textarea class="input textarea notif-input" data-status="${s}" data-type="to_admin">${esc(n.to_admin||'')}</textarea></div>
+      </div>`;
+    }).join('') + `<button class="btn btn-primary" onclick="saveNotifications()">ذخیره اعلان‌ها</button>`;
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function saveNotifications() {
+  const data = {};
+  document.querySelectorAll('.notif-input').forEach(el => {
+    const s = el.dataset.status; const t = el.dataset.type;
+    if (!data[s]) data[s] = {};
+    data[s][t] = el.value;
+  });
+  try { await API('/api/admin/notifications','PUT',data); toast('اعلان‌ها ذخیره شدند','success'); } catch(e) { toast(e.message,'error'); }
+}
+
+// ── SETTINGS ──
+async function loadSettings() {
+  try {
+    settings = await API('/api/admin/settings');
+    document.getElementById('settingsForm').innerHTML = `
+      <div class="card"><div class="card-header"><div class="ic">◎</div><h3>تنظیمات عمومی</h3></div>
+        <div class="form-group"><label class="label">درصد پیش‌پرداخت</label><input class="input" type="number" id="setAdvance" value="${settings.advance_percent||50}"></div>
+        <div class="form-group"><label class="label">حداقل پیش‌پرداخت (تومان)</label><input class="input" type="number" id="setMinAdvance" value="${settings.min_advance||100000}"></div>
+        <div class="form-group"><label class="label">تلفن پشتیبانی</label><input class="input" id="setPhone" value="${esc(settings.support_phone||'')}"></div>
+        <div class="form-group"><label class="label">تلگرام پشتیبانی</label><input class="input" id="setTg" value="${esc(settings.support_telegram||'')}" placeholder="username بدون @"></div>
+      </div>
+      <div class="card"><div class="card-header"><div class="ic">◈</div><h3>باشگاه مشتریان</h3></div>
+        <div class="form-group"><label class="label">پاداش دعوت (تومان)</label><input class="input" type="number" id="setRefReward" value="${settings.referral_reward||50000}"></div>
+        <div class="form-group"><label class="label">درصد تخفیف برای دعوت‌شونده</label><input class="input" type="number" id="setRefDiscount" value="${settings.referral_discount_percent||10}"></div>
+      </div>
+      <div class="card"><div class="card-header"><div class="ic">◎</div><h3>روش‌های پرداخت</h3></div>
+        <div id="paymentMethods"></div>
+        <button class="btn btn-secondary" onclick="addPaymentMethod()" style="margin-top:8px">＋ افزودن روش پرداخت</button>
+      </div>
+      <button class="btn btn-primary" onclick="saveSettings()" style="margin-top:12px">ذخیره تنظیمات</button>`;
+    renderPaymentMethods();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function renderPaymentMethods() {
+  const methods = settings.payment_methods || [];
+  document.getElementById('paymentMethods').innerHTML = methods.map((m,i) => `
+    <div class="detail-row" style="align-items:center">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="toggle ${m.active!==false?'on':''}" onclick="togglePM(${i})"></span>
+        <span>${esc(m.name||'')}</span>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="removePM(${i})">حذف</button>
+    </div>
+    ${m.url&&m.url!=='zarinpal'?`<div class="form-group" style="margin-top:8px"><input class="input" value="${esc(m.url)}" placeholder="لینک پرداخت" onchange="updatePMUrl(${i},this.value)"></div>`:''}
+  `).join('');
+}
+
+function togglePM(i) {
+  const methods = [...(settings.payment_methods||[])];
+  methods[i] = {...methods[i], active: !(methods[i].active !== false)};
+  settings.payment_methods = methods;
+  renderPaymentMethods();
+}
+function removePM(i) {
+  const methods = [...(settings.payment_methods||[])];
+  methods.splice(i,1);
+  settings.payment_methods = methods;
+  renderPaymentMethods();
+}
+function addPaymentMethod() {
+  const name = prompt('نام روش پرداخت:');
+  if (!name) return;
+  const url = prompt('لینک پرداخت (یا zarinpal برای زرین‌پال):','');
+  const methods = [...(settings.payment_methods||[])];
+  methods.push({name, url: url||'', active:true});
+  settings.payment_methods = methods;
+  renderPaymentMethods();
+}
+function updatePMUrl(i, url) {
+  const methods = [...(settings.payment_methods||[])];
+  methods[i] = {...methods[i], url};
+  settings.payment_methods = methods;
+}
+
+async function saveSettings() {
+  const data = {
+    advance_percent: parseInt(document.getElementById('setAdvance')?.value)||50,
+    min_advance: parseInt(document.getElementById('setMinAdvance')?.value)||100000,
+    support_phone: document.getElementById('setPhone')?.value?.trim()||'',
+    support_telegram: document.getElementById('setTg')?.value?.trim()||'',
+    referral_reward: parseInt(document.getElementById('setRefReward')?.value)||50000,
+    referral_discount_percent: parseInt(document.getElementById('setRefDiscount')?.value)||10,
+    payment_methods: settings.payment_methods,
+  };
+  try { await API('/api/admin/settings','PUT',data); toast('تنظیمات ذخیره شد','success'); } catch(e) { toast(e.message,'error'); }
+}
+
+// ── UTILS ──
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// ── CLOCK ──
+setInterval(() => { document.getElementById('clock').textContent = new Date().toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'}); }, 1000);
+
+// ── INIT ──
+loadDashboard();
+
+document.addEventListener('click', e => {
+  if (e.target.closest('button')) TG.HapticFeedback?.impactOccurred('light');
+});
+</script>
+</body>
+</html>
